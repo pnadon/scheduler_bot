@@ -204,8 +204,14 @@ impl User {
   }
 
   pub fn set_day_range(&mut self, start_day: Day, end_day: Day, time: u32, available: bool) {
-    for day_num in (start_day as u32)..=(end_day as u32) {
-      self.set_time(num_to_day(day_num).unwrap(), time, available);
+    let end_num;
+    if end_day < start_day {
+      end_num = end_day as u32 + 7;
+    } else {
+      end_num = end_day as u32;
+    }
+    for day_num in (start_day as u32)..=(end_num) {
+      self.set_time(num_to_day(day_num % 7).unwrap(), time, available);
     }
   }
 

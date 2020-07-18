@@ -92,3 +92,9 @@ fn run_bot() {
 
     client.start().expect("Could not start client.");
 }
+
+fn test() {
+    let mut usr = User::new("bob".to_string());
+    usr.set_day_range(day::Day::Monday, day::Day::Friday, 2, true);
+    usr.set_day_range(day::Day::Saturday, day::Day::Sunday, 2, true);
+}
