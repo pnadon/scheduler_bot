@@ -124,8 +124,8 @@ impl User {
           local_schedule
             .iter()
             .map(move |times| match times & bit {
-              0 => 'X',
-              _ => 'O',
+              0 => '░',
+              _ => '█',
             })
             .collect::<String>()
             + &'\n'.to_string()
