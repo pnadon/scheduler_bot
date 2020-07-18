@@ -223,9 +223,15 @@ impl User {
     end_time: u32,
     available: bool,
   ) {
-    for day_num in (start_day as u32)..=(end_day as u32) {
+    let end_num;
+    if end_day < start_day {
+      end_num = end_day as u32 + 7;
+    } else {
+      end_num = end_day as u32;
+    }
+    for day_num in (start_day as u32)..=(end_num) {
       self.set_time_range(
-        num_to_day(day_num).unwrap(),
+        num_to_day(day_num % 7).unwrap(),
         start_time,
         end_time,
         available,
