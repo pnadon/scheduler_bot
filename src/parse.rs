@@ -20,6 +20,7 @@ pub enum ParamType {
   RemoveSchedule,
   ViewSchedule,
   Available,
+  Meme,
 }
 
 pub fn to_params(input: &str) -> (Option<ParamType>, Option<Vec<ParamVals>>) {
@@ -68,6 +69,8 @@ fn parse_params(
     )
   } else if param_type_str.starts_with("available") {
     (Some(ParamType::Available), parse_schedule(param_vals_str))
+  } else if param_type_str.starts_with("showtime") {
+    (Some(ParamType::Meme), Some(vec![]))
   } else {
     (None, None)
   }
@@ -274,7 +277,7 @@ pub fn process(
       ParamVals::ViewId(id) => {
         if let Some(usr) = schedule.user_by_name(user_name) {
           if let Some(lookup_usr) = schedule.user_by_name(id) {
-            Ok(Some(lookup_usr.disp_schedule(true, usr.timezone())))
+            Ok(Some("```\n".to_string() + &lookup_usr.disp_schedule(true, usr.timezone()) + "```"))
           } else {
             Err("Could not lookup other user")
           }
@@ -328,10 +331,13 @@ pub fn process(
     }
     (ParamType::ViewSchedule, 0) => {
       if let Some(usr) = schedule.user_by_name(user_name) {
-        Ok(Some(usr.disp_schedule(true, usr.timezone())))
+        Ok(Some("```\n".to_string() + &usr.disp_schedule(true, usr.timezone()) + "```"))
       } else {
         Err("Could not find user")
       }
+    },
+    (ParamType::Meme, 0) => {
+      Ok(Some("https://i.postimg.cc/hvJh0k40/showtime.png".to_string() + "\nIt's showtime"))
     }
     (_, _) => Err("Incorrect param type and/or param value"),
   }

@@ -29,7 +29,7 @@ impl EventHandler for Handler {
     // Event handlers are dispatched through a threadpool, and so multiple
     // events can be dispatched simultaneously.
     fn message(&self, ctx: Context, msg: Message) {
-        if msg.content.starts_with("~") {
+        if msg.content.starts_with("?") {
             let id = *msg.author.id.as_u64();
             let name = &msg.author.name;
             let mut data = ctx.data.write();
@@ -47,7 +47,7 @@ impl EventHandler for Handler {
                 match parse::process(schedule, name, p_type, vals) {
                     Ok(res) => {
                         if let Some(res_msg) = res {
-                            if let Err(why) = msg.channel_id.say(&ctx.http, "```\n".to_string() + &res_msg + "\n```") {
+                            if let Err(why) = msg.channel_id.say(&ctx.http, res_msg) {
                                 println!("Error sending message: {:?}", why);
                             }
                         }
