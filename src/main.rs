@@ -6,7 +6,6 @@ mod parse;
 mod schedules;
 
 use schedules::{ScheduleCollection, User};
-use day::Day;
 
 use std::env;
 
@@ -14,6 +13,12 @@ use serenity::{
     model::{channel::Message, gateway::Ready},
     prelude::*,
 };
+
+struct MessageEventParser;
+
+impl TypeMapKey for MessageEventParser {
+    type Value = ScheduleCollection;
+}
 
 struct Handler;
 
@@ -24,12 +29,38 @@ impl EventHandler for Handler {
     // Event handlers are dispatched through a threadpool, and so multiple
     // events can be dispatched simultaneously.
     fn message(&self, ctx: Context, msg: Message) {
-        if msg.content == "!ping" {
+        if msg.content.starts_with("~") {
+            let id = *msg.author.id.as_u64();
+            let name = &msg.author.name;
+            let mut data = ctx.data.write();
+            let schedule = data.get_mut::<MessageEventParser>().unwrap();
+            if let (Some(p_type), Some(vals)) = parse::to_params(&msg.content) {
+                if schedule.get_id(name).is_none() {
+                    if !schedule.id_exists(id) {
+                        schedule.insert_user(id, User::new(name.to_string()))
+                    }
+                    if let Err(why) = schedule.add_name_id(name, id) {
+                        println!("Error adding user: {:?}", why);
+                    }
+                }
+
+                match parse::process(schedule, name, p_type, vals) {
+                    Ok(res) => {
+                        if let Some(res_msg) = res {
+                            if let Err(why) = msg.channel_id.say(&ctx.http, "```\n".to_string() + &res_msg + "\n```") {
+                                println!("Error sending message: {:?}", why);
+                            }
+                        }
+                    },
+                    Err(why) => {
+                        println!("Error parsing message: {:?}", why);
+                    }
+                }
             // Sending a message can fail, due to a network error, an
             // authentication error, or lack of permissions to post in the
             // channel, so log to stdout when some error happens, with a
             // description of it.
-            if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!") {
+            } else if let Err(why) = msg.channel_id.say(&ctx.http, "Failed to parse message") {
                 println!("Error sending message: {:?}", why);
             }
         }
@@ -54,47 +85,10 @@ fn run_bot() {
     let mut client = Client::new(&env::var("DISCORD_TOKEN").expect("Could not find token."), Handler)
         .expect("Could not create client.");
 
-    // {
-    //     let mut data = client.data.write();
-    //     data.insert::<ScheduleCollection>(HashMap::default());
-    // }
+    {
+        let mut data = client.data.write();
+        data.insert::<MessageEventParser>(ScheduleCollection::new());
+    }
 
     client.start().expect("Could not start client.");
-}
-
-
-fn demo() {
-    let mut schedule = ScheduleCollection::new();
-    schedule.insert_user("uid345".to_string(), User::new("bob".to_string()));
-    if let Some(usr) = schedule.get_mut_user("uid345".to_string()) {
-        usr.set_time(Day::Monday, 4, true);
-    }
-
-    println!("{:?}", schedule.available_at(Day::Monday, 4, 0));
-    
-    if let Some(usr) = schedule.get_user("uid345".to_string()) {
-        println!("{}", usr.disp_schedule(true, 0));
-        println!("{}", usr.disp_schedule(true, 4));
-    }
-
-    println!("{:?}", parse::to_params("add, from 1 to 2"));
-    println!("{:?}", parse::to_params("add mon tue wed from 11 to 2"));
-    println!("{:?}", parse::to_params("add from sun to wed 11 12 15"));
-    if let (Some(p_type), Some(vals)) = parse::to_params("add 11, 14, 15, 16") {
-        println!("{:?} {:?}", p_type, vals);
-        if parse::process(&mut schedule, "uid345".to_string(), p_type, vals).is_ok() {
-            if let Some(usr) = schedule.get_user("uid345".to_string()) {
-                println!("{}", usr.disp_schedule(true, 0));
-            }
-        }
-    }
-    if let (Some(p_type), Some(vals)) = parse::to_params("remove from mondi to wed from 13 to 14") {
-        println!("{:?} {:?}", p_type, vals);
-        if parse::process(&mut schedule, "uid345".to_string(), p_type, vals).is_ok() {
-            if let Some(usr) = schedule.get_user("uid345".to_string()) {
-                println!("{}", usr.disp_schedule(true, 0));
-                println!("{}", usr.disp_schedule(true, 10));
-            }
-        }
-    }
 }

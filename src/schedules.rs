@@ -1,15 +1,30 @@
-use crate::day::Day;
+use crate::day::*;
 use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct ScheduleCollection {
-  users: HashMap<String, User>,
+  users: HashMap<u64, User>,
+  name_id_map: HashMap<String, u64>,
 }
 
 impl ScheduleCollection {
   pub fn new() -> ScheduleCollection {
     ScheduleCollection {
       users: HashMap::new(),
+      name_id_map: HashMap::new(),
+    }
+  }
+
+  pub fn get_id(&self, name: &str) -> Option<&u64> {
+    self.name_id_map.get(name)
+  }
+
+  pub fn add_name_id(&mut self, name: &str, id: u64) -> Result<String, String> {
+    if !self.name_id_map.contains_key(name) {
+      self.name_id_map.insert(name.to_string(), id);
+      Ok("inserted new user".to_string())
+    } else {
+      Err("User name already mapped".to_string())
     }
   }
 
@@ -28,20 +43,66 @@ impl ScheduleCollection {
       .collect::<Vec<Vec<String>>>()
   }
 
-  pub fn insert_user(&mut self, name: String, user: User) {
-    self.users.insert(name, user);
+  pub fn available_day_to_string(&self, day: Day, timezone: i32) -> String {
+    (0..24)
+      .map(|time| self.available_to_string(day, time, timezone))
+      .collect::<String>()
   }
 
-  pub fn get_mut_user(&mut self, name: String) -> Option<&mut User> {
-    if self.users.contains_key(&name) {
-      Some(self.users.entry(name.clone()).or_insert(User::new(name)))
+  pub fn available_to_string(&self, day: Day, time: u32, timezone: i32) -> String {
+    let names = self.available_at(day, time, timezone);
+
+    match names.len() {
+      0 => "".to_string(),
+      _ => {
+        day.to_string() + " at " 
+        + &time.to_string() + ": "
+        + &self.available_at(day, time, timezone)
+          .iter().map(move |name| name.to_string() + ", ")
+            .collect::<String>()
+        + "\n"
+      }
+    }
+  }
+
+  pub fn id_exists(&self, name: u64) -> bool {
+    self.users.contains_key(&name)
+  }
+
+  pub fn name_exists(&self, name: &str) -> bool {
+    self.name_id_map.contains_key(name)
+  }
+
+  pub fn insert_user(&mut self, id: u64, user: User) {
+    self.users.insert(id, user);
+  }
+
+  pub fn mut_user_by_id(&mut self, id: u64) -> Option<&mut User> {
+    if self.users.contains_key(&id) {
+      Some(self.users.entry(id).or_insert(User::new(" ".to_string())))
     } else {
       None
     }
   }
 
-  pub fn get_user(&self, name: String) -> Option<&User> {
-    self.users.get(&name)
+  pub fn user_by_id(&self, id: u64) -> Option<&User> {
+    self.users.get(&id)
+  }
+
+  pub fn mut_user_by_name(&mut self, name: &str) -> Option<&mut User> {
+    if self.name_id_map.contains_key(name) {
+      Some(self.users.entry(*self.get_id(name).unwrap()).or_insert(User::new(" ".to_string())))
+    } else {
+      None
+    }
+  }
+
+  pub fn user_by_name(&self, name: &str) -> Option<&User> {
+    if self.name_id_map.contains_key(name) {
+      self.users.get(self.get_id(name).unwrap())
+    } else {
+      None
+    }
   }
 }
 
@@ -52,35 +113,6 @@ pub struct User {
   schedule: [u32; 7],
 }
 
-fn num_to_day(num: u32) -> Option<Day> {
-  match num {
-    0 => Some(Day::Sunday),
-    1 => Some(Day::Monday),
-    2 => Some(Day::Tuesday),
-    3 => Some(Day::Wednesday),
-    4 => Some(Day::Thursday),
-    5 => Some(Day::Friday),
-    6 => Some(Day::Saturday),
-    _ => None,
-  }
-}
-impl Iterator for Day {
-  // we will be counting with usize
-  type Item = Day;
-
-  // next() is the only required method
-  fn next(&mut self) -> Option<Self::Item> {
-    match self {
-      Day::Sunday => Some(Day::Monday),
-      Day::Monday => Some(Day::Tuesday),
-      Day::Tuesday => Some(Day::Wednesday),
-      Day::Wednesday => Some(Day::Thursday),
-      Day::Thursday => Some(Day::Friday),
-      Day::Friday => Some(Day::Saturday),
-      Day::Saturday => Some(Day::Sunday),
-    }
-  }
-}
 impl User {
   pub fn new(name: String) -> User {
     Self {

@@ -19,6 +19,7 @@ pub enum ParamType {
   AddSchedule,
   RemoveSchedule,
   ViewSchedule,
+  Available,
 }
 
 pub fn to_params(input: &str) -> (Option<ParamType>, Option<Vec<ParamVals>>) {
@@ -27,7 +28,7 @@ pub fn to_params(input: &str) -> (Option<ParamType>, Option<Vec<ParamVals>>) {
     .map(|word| {
       word
         .chars()
-        .filter(|chr| chr.is_ascii_alphanumeric())
+        .filter(|chr| chr.is_ascii_alphanumeric() || chr == &'-')
         .collect::<String>()
     })
     .filter(|word| word.len() > 0)
@@ -48,6 +49,7 @@ fn parse_params(
   param_type_str: &str,
   param_vals_str: Vec<&str>,
 ) -> (Option<ParamType>, Option<Vec<ParamVals>>) {
+  println!(">Parsing: {:?}  {:?}", param_type_str, param_vals_str);
   if param_type_str.starts_with("add") {
     (Some(ParamType::AddSchedule), parse_schedule(param_vals_str))
   } else if param_type_str.starts_with("remove") {
@@ -64,6 +66,8 @@ fn parse_params(
       Some(ParamType::ViewSchedule),
       parse_schedule_id(param_vals_str),
     )
+  } else if param_type_str.starts_with("available") {
+    (Some(ParamType::Available), parse_schedule(param_vals_str))
   } else {
     (None, None)
   }
@@ -90,7 +94,7 @@ fn parse_schedule_id(params: Vec<&str>) -> Option<Vec<ParamVals>> {
 fn parse_timezone(params: Vec<&str>) -> Option<Vec<ParamVals>> {
   if params.len() > 0 {
     if let Ok(num) = params.first().unwrap().parse::<f64>() {
-      let time_offset: i32 = num.log10().trunc() as i32;
+      let time_offset: i32 = get_largest_digit(num);
       if time_offset > -24 && time_offset < 24 {
         return Some(vec![ParamVals::TimeZone(time_offset)]);
       }
@@ -99,6 +103,10 @@ fn parse_timezone(params: Vec<&str>) -> Option<Vec<ParamVals>> {
     return Some(vec![]);
   }
   None
+}
+
+fn get_largest_digit(num: f64) -> i32 {
+  num as i32 / 10i32.pow(num.abs().log10().trunc() as u32)
 }
 
 fn parse_schedule(params: Vec<&str>) -> Option<Vec<ParamVals>> {
@@ -144,7 +152,7 @@ fn parse_schedule(params: Vec<&str>) -> Option<Vec<ParamVals>> {
     res.push(ParamVals::DayRange(Day::Sunday, Day::Saturday));
   }
   if param.is_none() {
-    return None;
+    return Some(res);
   }
   if param.unwrap().starts_with("from") {
     match (params_iter.next(), params_iter.next(), params_iter.next()) {
@@ -193,13 +201,14 @@ fn parse_day(word: &str) -> Result<Day, &str> {
 
 pub fn process(
   schedule: &mut ScheduleCollection,
-  usr_id: String,
+  user_name: &str,
   p_type: ParamType,
   vals: Vec<ParamVals>,
 ) -> Result<Option<String>, &'static str> {
+  println!(">Processing: {:?}  {:?}", p_type, vals);
   match (p_type, vals.len()) {
     (ParamType::TimeZone, 1) => {
-      if let Some(usr) = schedule.get_mut_user(usr_id) {
+      if let Some(usr) = schedule.mut_user_by_name(user_name) {
         match &vals[0] {
           ParamVals::TimeZone(timezone) => {
             usr.set_timezone(*timezone);
@@ -212,7 +221,7 @@ pub fn process(
       }
     }
     (ParamType::Name, 1) => {
-      if let Some(usr) = schedule.get_mut_user(usr_id) {
+      if let Some(usr) = schedule.mut_user_by_name(user_name) {
         match &vals[0] {
           ParamVals::Name(name) => {
             usr.set_name(name.to_string());
@@ -225,7 +234,7 @@ pub fn process(
       }
     }
     (ParamType::RemoveSchedule, 2) | (ParamType::AddSchedule, 2) => {
-      if let Some(usr) = schedule.get_mut_user(usr_id) {
+      if let Some(usr) = schedule.mut_user_by_name(user_name) {
         let available = p_type == ParamType::AddSchedule;
         match (&vals[0], &vals[1]) {
           (ParamVals::DayCollection(day_vec), ParamVals::TimeCollection(time_vec)) => {
@@ -263,8 +272,8 @@ pub fn process(
     }
     (ParamType::ViewSchedule, 1) => match &vals[0] {
       ParamVals::ViewId(id) => {
-        if let Some(usr) = schedule.get_user(usr_id) {
-          if let Some(lookup_usr) = schedule.get_user(id.to_string()) {
+        if let Some(usr) = schedule.user_by_name(user_name) {
+          if let Some(lookup_usr) = schedule.user_by_name(id) {
             Ok(Some(lookup_usr.disp_schedule(true, usr.timezone())))
           } else {
             Err("Could not lookup other user")
@@ -275,22 +284,50 @@ pub fn process(
       }
       _ => Err("Incorrect params"),
     },
+    (ParamType::Available, 2) => match (&vals[0], &vals[1]) {
+      (ParamVals::DayCollection(day_vec), ParamVals::TimeCollection(time_vec)) => {
+        if let Some(usr) = schedule.user_by_name(user_name) {
+          if day_vec.len() == 1 && time_vec.len() == 1 {
+            Ok(Some(schedule.available_to_string(day_vec[0], time_vec[0], usr.timezone())))
+          } else {
+            Err("Too many dates")
+          }
+        } else {
+          Err("User does not exist")
+        }
+      },
+      _ => Err("Incorrect params"),
+    },
+    (ParamType::Available, 1) => match &vals[0] {
+      ParamVals::DayCollection(day_vec) => {
+        if let Some(usr) = schedule.user_by_name(user_name) {
+          if day_vec.len() == 1 {
+            Ok(Some(schedule.available_day_to_string(day_vec[0], usr.timezone())))
+          } else {
+            Err("Too many dates")
+          }
+        } else {
+          Err("User does not exist")
+        }
+      },
+      _ => Err("Incorrect params"),
+    },
     (ParamType::TimeZone, 0) => {
-      if let Some(usr) = schedule.get_user(usr_id) {
+      if let Some(usr) = schedule.user_by_name(user_name) {
         Ok(Some(usr.timezone().to_string()))
       } else {
         Err("Could not find user")
       }
     }
     (ParamType::Name, 0) => {
-      if let Some(usr) = schedule.get_user(usr_id) {
+      if let Some(usr) = schedule.user_by_name(user_name) {
         Ok(Some(usr.name().to_string()))
       } else {
         Err("Could not find user")
       }
     }
     (ParamType::ViewSchedule, 0) => {
-      if let Some(usr) = schedule.get_user(usr_id) {
+      if let Some(usr) = schedule.user_by_name(user_name) {
         Ok(Some(usr.disp_schedule(true, usr.timezone())))
       } else {
         Err("Could not find user")
