@@ -1,17 +1,6 @@
 use crate::day::Day;
-use crate::schedules::ScheduleCollection;
 
-#[derive(Clone, PartialEq, PartialOrd, Debug)]
-pub enum ParamVals {
-  TimeCollection(Vec<u32>),
-  DayCollection(Vec<Day>),
-  TimeRange(u32, u32),
-  DayRange(Day, Day),
-  Name(String),
-  TimeZone(i32),
-  ViewId(String),
-}
-
+/// Tokens representing the type of query.
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub enum ParamType {
   TimeZone,
@@ -23,8 +12,22 @@ pub enum ParamType {
   Meme,
 }
 
-pub fn to_params(input: &str) -> (Option<ParamType>, Option<Vec<ParamVals>>) {
-  let params: Vec<String> = input
+/// Tokens representing the values passed to the user's query.
+#[derive(Clone, PartialEq, PartialOrd, Debug)]
+pub enum ParamVals {
+  TimeCollection(Vec<u32>),
+  DayCollection(Vec<Day>),
+  TimeRange(u32, u32),
+  DayRange(Day, Day),
+  Name(String),
+  TimeZone(i32),
+  ViewId(String),
+}
+
+/// Transforms the raw text of the query into a cleaned list of params.
+/// Examples include splitting by spaces and commands, and lowercasing input.
+pub fn filter_query(input: &str) -> Vec<String> {
+  input
     .split(|chr| chr == ' ' || chr == ',')
     .map(|word| {
       word
@@ -34,23 +37,23 @@ pub fn to_params(input: &str) -> (Option<ParamType>, Option<Vec<ParamVals>>) {
     })
     .filter(|word| word.len() > 0)
     .map(|word| word.to_lowercase())
-    .collect();
-
-  parse_params(
-    params.first().unwrap().as_str(),
-    params[1..]
-      .iter()
-      .map(|word| word.as_str())
-      .collect::<Vec<&str>>()
-      .to_vec(),
-  )
+    .collect::<Vec<String>>()
 }
 
-fn parse_params(
-  param_type_str: &str,
-  param_vals_str: Vec<&str>,
-) -> (Option<ParamType>, Option<Vec<ParamVals>>) {
-  println!(">Parsing: {:?}  {:?}", param_type_str, param_vals_str);
+/// Parses the list of params into tokens representing their value.
+/// The function mostly serves as a router to sub-functions which handle
+/// each individual type of query.
+pub fn parse_query(params: Vec<String>) -> (Option<ParamType>, Option<Vec<ParamVals>>) {
+  if params.len() < 1 {
+    return (None, None);
+  }
+  let param_type_str = params.first().unwrap().as_str();
+  let param_vals_str = params[1..]
+    .iter()
+    .map(|word| word.as_str())
+    .collect::<Vec<&str>>()
+    .to_vec();
+
   if param_type_str.starts_with("add") {
     (Some(ParamType::AddSchedule), parse_schedule(param_vals_str))
   } else if param_type_str.starts_with("remove") {
@@ -76,6 +79,7 @@ fn parse_params(
   }
 }
 
+/// Parses the value of the inputted name.
 fn parse_name(params: Vec<&str>) -> Option<Vec<ParamVals>> {
   if params.len() > 0 {
     Some(vec![ParamVals::Name(params.concat())])
@@ -84,6 +88,7 @@ fn parse_name(params: Vec<&str>) -> Option<Vec<ParamVals>> {
   }
 }
 
+/// Parses the value of the user id.
 fn parse_schedule_id(params: Vec<&str>) -> Option<Vec<ParamVals>> {
   if params.len() > 4 {
     Some(vec![ParamVals::ViewId(
@@ -94,6 +99,7 @@ fn parse_schedule_id(params: Vec<&str>) -> Option<Vec<ParamVals>> {
   }
 }
 
+/// Parses the value of the inputted timezone.
 fn parse_timezone(params: Vec<&str>) -> Option<Vec<ParamVals>> {
   if params.len() > 0 {
     if let Ok(num) = params.first().unwrap().parse::<f64>() {
@@ -108,10 +114,14 @@ fn parse_timezone(params: Vec<&str>) -> Option<Vec<ParamVals>> {
   None
 }
 
+/// Retrieves the largest digit in an int.
 fn get_largest_digit(num: f64) -> i32 {
   num as i32 / 10i32.pow(num.abs().log10().trunc() as u32)
 }
 
+/// Parses the values corresponding to a query related to the schedule itself.
+/// Handles various cases such as a day and/or time range,
+/// as well as multiple specific days and/or times.
 fn parse_schedule(params: Vec<&str>) -> Option<Vec<ParamVals>> {
   let mut params_iter = params.iter().peekable();
   let mut res: Vec<ParamVals> = vec![];
@@ -188,6 +198,8 @@ fn parse_schedule(params: Vec<&str>) -> Option<Vec<ParamVals>> {
   Some(res)
 }
 
+/// Parses the value of the inputted day.
+/// Used in the parse_schedule function.
 fn parse_day(word: &str) -> Result<Day, &str> {
   let prefix_string = word.chars().take(3).collect::<String>();
   match &prefix_string[..] {
@@ -201,145 +213,3 @@ fn parse_day(word: &str) -> Result<Day, &str> {
     _ => Err("Invalid Date"),
   }
 }
-
-pub fn process(
-  schedule: &mut ScheduleCollection,
-  user_name: &str,
-  p_type: ParamType,
-  vals: Vec<ParamVals>,
-) -> Result<Option<String>, &'static str> {
-  println!(">Processing: {:?}  {:?}", p_type, vals);
-  match (p_type, vals.len()) {
-    (ParamType::TimeZone, 1) => {
-      if let Some(usr) = schedule.mut_user_by_name(user_name) {
-        match &vals[0] {
-          ParamVals::TimeZone(timezone) => {
-            usr.set_timezone(*timezone);
-            Ok(None)
-          }
-          _ => Err("Incorrect timezone params"),
-        }
-      } else {
-        Err("Could not find user")
-      }
-    }
-    (ParamType::Name, 1) => {
-      if let Some(usr) = schedule.mut_user_by_name(user_name) {
-        match &vals[0] {
-          ParamVals::Name(name) => {
-            usr.set_name(name.to_string());
-            Ok(None)
-          }
-          _ => Err("Incorrect name params"),
-        }
-      } else {
-        Err("Could not find user")
-      }
-    }
-    (ParamType::RemoveSchedule, 2) | (ParamType::AddSchedule, 2) => {
-      if let Some(usr) = schedule.mut_user_by_name(user_name) {
-        let available = p_type == ParamType::AddSchedule;
-        match (&vals[0], &vals[1]) {
-          (ParamVals::DayCollection(day_vec), ParamVals::TimeCollection(time_vec)) => {
-            day_vec.iter().for_each(|day| {
-              time_vec
-                .iter()
-                .for_each(|time| usr.set_time(*day, *time, available))
-            });
-            Ok(None)
-          }
-          (ParamVals::DayCollection(day_vec), ParamVals::TimeRange(start_time, end_time)) => {
-            day_vec
-              .iter()
-              .for_each(|day| usr.set_time_range(*day, *start_time, *end_time, available));
-            Ok(None)
-          }
-          (ParamVals::DayRange(start_day, end_day), ParamVals::TimeCollection(time_vec)) => {
-            time_vec
-              .iter()
-              .for_each(|time| usr.set_day_range(*start_day, *end_day, *time, available));
-            Ok(None)
-          }
-          (
-            ParamVals::DayRange(start_day, end_day),
-            ParamVals::TimeRange(start_time, end_time),
-          ) => {
-            usr.set_day_time_range(*start_day, *end_day, *start_time, *end_time, available);
-            Ok(None)
-          }
-          _ => Err("Incorrect params"),
-        }
-      } else {
-        Err("Could not find user")
-      }
-    }
-    (ParamType::ViewSchedule, 1) => match &vals[0] {
-      ParamVals::ViewId(id) => {
-        if let Some(usr) = schedule.user_by_name(user_name) {
-          if let Some(lookup_usr) = schedule.user_by_name(id) {
-            Ok(Some("```\n".to_string() + &lookup_usr.disp_schedule(true, usr.timezone()) + "```"))
-          } else {
-            Err("Could not lookup other user")
-          }
-        } else {
-          Err("User does not exist")
-        }
-      }
-      _ => Err("Incorrect params"),
-    },
-    (ParamType::Available, 2) => match (&vals[0], &vals[1]) {
-      (ParamVals::DayCollection(day_vec), ParamVals::TimeCollection(time_vec)) => {
-        if let Some(usr) = schedule.user_by_name(user_name) {
-          if day_vec.len() == 1 && time_vec.len() == 1 {
-            Ok(Some(schedule.available_to_string(day_vec[0], time_vec[0], usr.timezone())))
-          } else {
-            Err("Too many dates")
-          }
-        } else {
-          Err("User does not exist")
-        }
-      },
-      _ => Err("Incorrect params"),
-    },
-    (ParamType::Available, 1) => match &vals[0] {
-      ParamVals::DayCollection(day_vec) => {
-        if let Some(usr) = schedule.user_by_name(user_name) {
-          if day_vec.len() == 1 {
-            Ok(Some(schedule.available_day_to_string(day_vec[0], usr.timezone())))
-          } else {
-            Err("Too many dates")
-          }
-        } else {
-          Err("User does not exist")
-        }
-      },
-      _ => Err("Incorrect params"),
-    },
-    (ParamType::TimeZone, 0) => {
-      if let Some(usr) = schedule.user_by_name(user_name) {
-        Ok(Some(usr.timezone().to_string()))
-      } else {
-        Err("Could not find user")
-      }
-    }
-    (ParamType::Name, 0) => {
-      if let Some(usr) = schedule.user_by_name(user_name) {
-        Ok(Some(usr.name().to_string()))
-      } else {
-        Err("Could not find user")
-      }
-    }
-    (ParamType::ViewSchedule, 0) => {
-      if let Some(usr) = schedule.user_by_name(user_name) {
-        Ok(Some("```\n".to_string() + &usr.disp_schedule(true, usr.timezone()) + "```"))
-      } else {
-        Err("Could not find user")
-      }
-    },
-    (ParamType::Meme, 0) => {
-      Ok(Some("https://i.postimg.cc/hvJh0k40/showtime.png".to_string() + "\nIt's showtime"))
-    }
-    (_, _) => Err("Incorrect param type and/or param value"),
-  }
-}
-
