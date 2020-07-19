@@ -122,7 +122,9 @@ fn process_view_user_schedule(
             if let Some(usr) = schedule.user(user_name) {
                 if let Some(lookup_usr) = schedule.user(id) {
                     Ok(Some(
-                        "```\n".to_string()
+                        "```\nTimezone:".to_string()
+                            + &lookup_usr.timezone().to_string()
+                            + "\n"
                             + &lookup_usr.disp_schedule(true, usr.timezone())
                             + "```",
                     ))
@@ -147,11 +149,16 @@ fn process_available_day_time(
         (ParamVals::DayCollection(day_vec), ParamVals::TimeCollection(time_vec)) => {
             if let Some(usr) = schedule.user(user_name) {
                 if day_vec.len() == 1 && time_vec.len() == 1 {
-                    Ok(Some(schedule.available_to_string(
-                        day_vec[0],
-                        time_vec[0],
-                        usr.timezone(),
-                    )))
+                    Ok(Some(
+                        "Timezone:".to_string()
+                            + &usr.timezone().to_string()
+                            + "\n"
+                            + &schedule.available_to_string(
+                                day_vec[0],
+                                time_vec[0],
+                                usr.timezone(),
+                            ),
+                    ))
                 } else {
                     Err("Too many dates")
                 }
@@ -174,7 +181,10 @@ fn process_available_day(
             if let Some(usr) = schedule.user(user_name) {
                 if day_vec.len() == 1 {
                     Ok(Some(
-                        schedule.available_day_to_string(day_vec[0], usr.timezone()),
+                        "Timezone:".to_string()
+                            + &usr.timezone().to_string()
+                            + "\n"
+                            + &schedule.available_day_to_string(day_vec[0], usr.timezone()),
                     ))
                 } else {
                     Err("Too many dates")
@@ -218,7 +228,12 @@ fn process_view_schedule(
 ) -> Result<Option<String>, &'static str> {
     if let Some(usr) = schedule.user(user_name) {
         Ok(Some(
-            "```\n".to_string() + &usr.disp_schedule(true, usr.timezone()) + "```",
+            "```\n".to_string()
+                + &"Timezone:".to_string()
+                + &usr.timezone().to_string()
+                + "\n"
+                + &usr.disp_schedule(true, usr.timezone())
+                + "```",
         ))
     } else {
         Err("Could not find user")
@@ -235,7 +250,8 @@ fn process_post_meme() -> Result<Option<String>, &'static str> {
 /// Displays the help info
 pub fn process_view_help() -> Result<Option<String>, &'static str> {
     Ok(Some(
-        format!("
+        format!(
+            "
 Help:\n
 \n
 Types of inputs to commands:\n
@@ -285,7 +301,9 @@ Notation:\n
 - try it yourself!\n
 {pref}help\n
 - this message\n
-", pref = "?")
+",
+            pref = "?"
+        )
         .to_string(),
     ))
 }

@@ -11,7 +11,10 @@ use user::User;
 use std::env;
 
 use serenity::{
-    model::{channel::Message, gateway::{Ready, Activity}},
+    model::{
+        channel::Message,
+        gateway::{Activity, Ready},
+    },
     prelude::*,
 };
 
