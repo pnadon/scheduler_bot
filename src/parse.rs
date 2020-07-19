@@ -10,6 +10,7 @@ pub enum ParamType {
     ViewSchedule,
     Available,
     Meme,
+    Help,
 }
 
 /// Tokens representing the values passed to the user's query.
@@ -73,6 +74,8 @@ pub fn parse_query(params: Vec<String>) -> (Option<ParamType>, Option<Vec<ParamV
         (Some(ParamType::Available), parse_schedule(param_vals_str))
     } else if param_type_str.starts_with("showtime") {
         (Some(ParamType::Meme), Some(vec![]))
+    } else if param_type_str.starts_with("help") {
+        (Some(ParamType::Help), Some(vec![]))
     } else {
         (None, None)
     }

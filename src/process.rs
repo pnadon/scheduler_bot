@@ -24,6 +24,7 @@ pub fn process(
         (ParamType::Name, 0) => process_view_name(schedule, user_name),
         (ParamType::ViewSchedule, 0) => process_view_schedule(schedule, user_name),
         (ParamType::Meme, 0) => process_post_meme(),
+        (ParamType::Help, 0) => process_view_help(),
         (_, _) => Err("Incorrect param type and/or param value"),
     }
 }
@@ -228,5 +229,63 @@ fn process_view_schedule(
 fn process_post_meme() -> Result<Option<String>, &'static str> {
     Ok(Some(
         "https://i.postimg.cc/hvJh0k40/showtime.png".to_string() + "\nIt's showtime",
+    ))
+}
+
+/// Displays the help info
+pub fn process_view_help() -> Result<Option<String>, &'static str> {
+    Ok(Some(
+        format!("
+Help:\n
+\n
+Types of inputs to commands:\n
+- time can be any from 0 to 23 (inclusive)\n
+- Day can by any from sun to sat (inclusive)\n
+- you can also use 'weekends' or 'weekdays' where Day(s) applies.\n
+- timezone can be from -23 to 23\n
+- user is a discord tag, excluding the '#', case-insensitive, eg. 3ntity2051\n
+- name is anything, although it will be converted to alphanumeric lowercase\n
+\n
+Notation:\n
+- <...> represents values (eg. <time> can be 0, 2, 18...)\n
+- <add or remove> means you can use either add or remove.\n
+\n
+{pref}<add or remove>\n
+- add adds certain days and times as available\n
+- remove makes certain days and times as unavailable\n
+    {pref}<add or remove> from <Day> to <Day> from <time> to <time>\n
+    {pref}<add or remove> <Day(s)> from <time> to <time>\n
+    {pref}<add or remove> from <Day> to <Day> <time(s)>\n
+    {pref}<add or remove> <Day(s)> <time(s)>\n
+    - eg. {pref}add from mon to thu from 1 to 5\n
+    - eg. {pref}remove mon wed fri from 4 to 7\n
+    - eg. {pref}add from weekdays 1 5 18\n
+\n
+{pref}name <name>\n
+- set your name, eg. {pref}name philio\n
+{pref}name\n
+- view your name\n
+\n
+{pref}timezone <timezone>\n
+- set your timezone, eg. {pref}timezone -7\n
+{pref}timezone\n
+- view your timezone\n
+\n
+{pref}view <user>\n
+- view the user's schedule, eg. {pref}view 3ntity2051\n
+{pref}view\n
+- view your own schedule\n
+\n
+{pref}available <Day> <time>\n
+- see who is available on that day and time, eg. {pref}available mon 15\n
+{pref}available <Day>\n
+- see who is available on that day, eg. {pref}available fri\n
+\n
+{pref}showtime\n
+- try it yourself!\n
+{pref}help\n
+- this message\n
+", pref = "?")
+        .to_string(),
     ))
 }

@@ -11,7 +11,7 @@ use user::User;
 use std::env;
 
 use serenity::{
-    model::{channel::Message, gateway::Ready},
+    model::{channel::Message, gateway::{Ready, Activity}},
     prelude::*,
 };
 
@@ -70,7 +70,8 @@ impl EventHandler for Handler {
     }
 
     /// Executes when the bot first starts.
-    fn ready(&self, _: Context, ready: Ready) {
+    fn ready(&self, ctx: Context, ready: Ready) {
+        ctx.set_activity(Activity::playing("Type \"?help\" to get started!"));
         println!("{} is connected!", ready.user.name);
     }
 }
