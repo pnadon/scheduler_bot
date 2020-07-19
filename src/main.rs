@@ -1,11 +1,11 @@
 mod day;
 mod parse;
+mod process;
 mod schedules;
 mod user;
-mod process;
 
-use schedules::ScheduleCollection;
 use parse::{filter_query, parse_query};
+use schedules::ScheduleCollection;
 use user::User;
 
 use std::env;
