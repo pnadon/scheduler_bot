@@ -4,6 +4,9 @@ mod process;
 mod schedules;
 mod user;
 
+use serde_json;
+use std::fs;
+
 use parse::{filter_query, parse_query};
 use schedules::ScheduleCollection;
 
@@ -16,6 +19,8 @@ use serenity::{
     },
     prelude::*,
 };
+
+static DATA_FNAME: &str = "./data";
 
 /// Wrapper for persistent data.
 struct PersistentData;
@@ -68,6 +73,7 @@ impl EventHandler for Handler {
             } else if let Err(why) = msg.channel_id.say(&ctx.http, "Failed to parse message") {
                 println!("Error sending message: {:?}", why);
             }
+            fs::write(DATA_FNAME, serde_json::to_string(&schedule).unwrap()).expect("failed to write file");
         }
     }
 
@@ -93,7 +99,17 @@ fn run_bot() {
 
     {
         let mut data = client.data.write();
-        data.insert::<PersistentData>(ScheduleCollection::new());
+        if let Ok(serialized_schedule) = fs::read_to_string(DATA_FNAME) {
+            if let Ok(schedule) = serde_json::from_str(&serialized_schedule) {
+                data.insert::<PersistentData>(schedule);
+            } else {
+                println!("Error parsing data file. Creating new...");
+                data.insert::<PersistentData>(ScheduleCollection::new());
+            }
+        } else {
+            println!("Could not find data file. Creating new...");
+            data.insert::<PersistentData>(ScheduleCollection::new());
+        }
     }
 
     client.start().expect("Could not start client.");

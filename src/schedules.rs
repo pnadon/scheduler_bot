@@ -1,12 +1,13 @@
 use crate::day::*;
 use crate::user::User;
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
 /// Contains a collection of user's schedules,
 /// as well as a mapping from their current name to their unique id.
 /// This is so that a user may refer to another user by name,
 /// while the system internally uses the user's unique id, which is static.
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ScheduleCollection {
     users: HashMap<u64, User>,
     name_id_map: HashMap<String, u64>,

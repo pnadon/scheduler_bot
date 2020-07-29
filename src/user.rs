@@ -1,9 +1,10 @@
 use crate::day::*;
+use serde::{Serialize, Deserialize};
 
 /// Represents a single user's schedule.
 /// The schedule itself is stored in UTC time as an int (used as a bit vector).
 /// eg. 0b010000000000000000000001 represents availability at 0 and 22.
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct User {
     name: String,
     timezone: i32,
