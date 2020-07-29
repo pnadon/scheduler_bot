@@ -20,7 +20,7 @@ use serenity::{
     prelude::*,
 };
 
-static DATA_FNAME: &str = "./data";
+static DATA_FNAME: &str = "./data.json";
 
 /// Wrapper for persistent data.
 struct PersistentData;
