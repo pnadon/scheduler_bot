@@ -132,10 +132,10 @@ fn parse_schedule(params: Vec<&str>) -> Option<Vec<ParamVals>> {
         return None;
     }
     if param.unwrap().starts_with("weekday") {
-        res.push(ParamVals::DayRange(Day::Monday, Day::Friday));
+        res.push(ParamVals::DayRange(Day::Mon, Day::Fri));
         param = params_iter.next();
     } else if param.unwrap().starts_with("weekend") {
-        res.push(ParamVals::DayRange(Day::Saturday, Day::Sunday));
+        res.push(ParamVals::DayRange(Day::Sat, Day::Sun));
         param = params_iter.next();
     } else if param.unwrap().starts_with("from")
         && params_iter.peek().is_some()
@@ -164,7 +164,7 @@ fn parse_schedule(params: Vec<&str>) -> Option<Vec<ParamVals>> {
         res.push(ParamVals::DayCollection(days));
         param = params_iter.next();
     } else {
-        res.push(ParamVals::DayRange(Day::Sunday, Day::Saturday));
+        res.push(ParamVals::DayRange(Day::Sun, Day::Sat));
     }
     if param.is_none() {
         return Some(res);
@@ -205,13 +205,13 @@ fn parse_schedule(params: Vec<&str>) -> Option<Vec<ParamVals>> {
 fn parse_day(word: &str) -> Result<Day, &str> {
     let prefix_string = word.chars().take(3).collect::<String>();
     match &prefix_string[..] {
-        "sun" => Ok(Day::Sunday),
-        "mon" => Ok(Day::Monday),
-        "tue" => Ok(Day::Tuesday),
-        "wed" => Ok(Day::Wednesday),
-        "thu" => Ok(Day::Thursday),
-        "fri" => Ok(Day::Friday),
-        "sat" => Ok(Day::Saturday),
+        "sun" => Ok(Day::Sun),
+        "mon" => Ok(Day::Mon),
+        "tue" => Ok(Day::Tue),
+        "wed" => Ok(Day::Wed),
+        "thu" => Ok(Day::Thu),
+        "fri" => Ok(Day::Fri),
+        "sat" => Ok(Day::Sat),
         _ => Err("Invalid Date"),
     }
 }

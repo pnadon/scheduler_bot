@@ -307,3 +307,25 @@ Notation:\n
         .to_string(),
     ))
 }
+
+
+#[cfg(test)]
+mod tests {
+    use crate::day::Day;
+    use super::*;
+
+    #[test]
+    fn test_schedules() {
+        let mut schedule = ScheduleCollection::new();
+        schedule.insert_user(123, "bob");
+        schedule.add_name_id("bob", 123).unwrap();
+        process_set_timezone(&mut schedule, "bob", vec![ParamVals::TimeZone(-5)]).unwrap();
+        process_set_schedule(&mut schedule, "bob", ParamType::AddSchedule, vec![ParamVals::DayRange(Day::Sat, Day::Sun), ParamVals::TimeRange(22, 23)]).unwrap();
+        process_set_schedule(&mut schedule, "bob", ParamType::AddSchedule, vec![ParamVals::DayCollection(vec![Day::Fri]), ParamVals::TimeRange(22, 23)]).unwrap();
+        process_set_schedule(&mut schedule, "bob", ParamType::AddSchedule, vec![ParamVals::DayCollection(vec![Day::Mon]), ParamVals::TimeRange(0, 1)]).unwrap();
+        println!("Schedule:\n{}", schedule.user("bob").unwrap().disp_schedule(false, -5));
+        let usr_schedule = schedule.user("bob").unwrap().get_raw_schedule();
+        println!("Raw schedule:\n{:024b}\n{:024b}\n{:024b}\n{:024b}\n{:024b}\n{:024b}\n{:024b}", usr_schedule[0], usr_schedule[1], usr_schedule[2], usr_schedule[3], usr_schedule[4], usr_schedule[5], usr_schedule[6]);
+        assert_eq!((1 << 3) + (1 << 4), usr_schedule[6]);
+    }
+}

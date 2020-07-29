@@ -6,7 +6,6 @@ mod user;
 
 use parse::{filter_query, parse_query};
 use schedules::ScheduleCollection;
-use user::User;
 
 use std::env;
 
@@ -47,7 +46,7 @@ impl EventHandler for Handler {
                 // they must be registered first.
                 if schedule.get_id(name).is_none() {
                     if !schedule.id_exists(id) {
-                        schedule.insert_user(id, User::new(name.to_string()))
+                        schedule.insert_user(id, name);
                     }
                     if let Err(why) = schedule.add_name_id(name, id) {
                         println!("Error adding user: {:?}", why);

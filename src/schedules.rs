@@ -82,8 +82,8 @@ impl ScheduleCollection {
     }
 
     /// Inserts a new user into the collection of schedules.
-    pub fn insert_user(&mut self, id: u64, user: User) {
-        self.users.insert(id, user);
+    pub fn insert_user(&mut self, id: u64, name: &str) {
+        self.users.insert(id, User::new(name.to_string()));
     }
 
     /// Retrieves a mutable reference to a user

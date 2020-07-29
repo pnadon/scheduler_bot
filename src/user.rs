@@ -36,48 +36,55 @@ impl User {
 
     /// Sets the user's timezone.
     pub fn set_timezone(&mut self, timezone: i32) {
+        // Schedule is shifted in 2 steps to maintain <24 hr changes
+        // first shifts schedule to UTC
+        // second shifts to new timezone
+        self.schedule = shift_schedule(self.schedule, self.timezone);
+        self.schedule = shift_schedule(self.schedule, -timezone);
         self.timezone = timezone;
     }
 
     /// Checks if the user is available at that time and day in that timezone.
     pub fn is_available(&self, day: Day, time: u32, timezone: i32) -> bool {
         let (day, time) = global_daytime(day, time, timezone);
-        self.schedule[day as usize] & 2_u32.pow(time) > 0
+        self.schedule[day as usize] & (1 << time) > 0
     }
 
     /// Returns a simple string representation of the user's schedule.
     pub fn disp_schedule(&self, time_as_row: bool, timezone: i32) -> String {
-        let local_schedule = local_schedule(self.schedule, timezone);
+        let shift_schedule = shift_schedule(self.schedule, timezone);
 
         // If time_as_row is true, the days will be the columns,
         // otherwise they are the rows.
         match time_as_row {
             true => (0..24)
-                .map(|pwr| 2u32.pow(pwr))
                 .map(|bit| {
-                    local_schedule
+                    format!("{:0>2}", bit.to_string())
+                    + ": "
+                    + &(shift_schedule
                         .iter()
-                        .map(move |times| match times & bit {
-                            0 => '░',
-                            _ => '█',
+                        .map(move |times| match times & (1 << bit) {
+                            0 => "░ ",
+                            _ => "█ ",
                         })
-                        .collect::<String>()
-                        + &'\n'.to_string()
+                        .collect::<String>())
+                        + "\n"
                 })
                 .collect::<String>(),
-            _ => local_schedule
-                .iter()
+            _ => "     012345678901234567890123\n".to_string() + &(shift_schedule
+                .iter().enumerate()
                 .map(|times| {
-                    (0..24)
-                        .map(|pwr| 2u32.pow(pwr))
-                        .map(|bit| match times & bit {
+                    num_to_day(times.0 as u32).unwrap().to_string()
+                    + ": "
+                    + &((0..24)
+                        .map(|bit| match times.1 & (1 << bit) {
                             0 => '░',
                             _ => '█',
                         })
-                        .collect::<String>()
-                        + &'\n'.to_string()
+                        .collect::<String>())
+                        + "\n"
                 })
-                .collect::<String>(),
+                .collect::<String>()),
         }
     }
 
@@ -85,8 +92,8 @@ impl User {
     pub fn set_time(&mut self, day: Day, time: u32, available: bool) {
         let (day, time) = global_daytime(day, time, self.timezone);
         match available {
-            true => self.schedule[day as usize] |= 2u32.pow(time),
-            false => self.schedule[day as usize] &= u32::max_value() - 2u32.pow(time),
+            true => self.schedule[day as usize] |= 1 << time,
+            false => self.schedule[day as usize] &= u32::max_value() - (1 << time),
         };
     }
 
@@ -104,7 +111,7 @@ impl User {
         let end_num;
 
         // If the range is from a later day to an earlier day,
-        // we still want to iterate. Eg., from Friday to Tuesday.
+        // we still want to iterate. Eg., from Fri to Tue.
         if end_day < start_day {
             end_num = end_day as u32 + 7;
         } else {
@@ -129,7 +136,7 @@ impl User {
         let end_num;
 
         // If the range is from a later day to an earlier day,
-        // we still want to iterate. Eg., from Friday to Tuesday.
+        // we still want to iterate. Eg., from Fri to Tue.
         if end_day < start_day {
             end_num = end_day as u32 + 7;
         } else {
@@ -144,6 +151,16 @@ impl User {
                 available,
             );
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn get_raw_schedule(&self) -> [u32; 7] {
+        self.schedule
+    }
+
+    #[allow(dead_code)]
+    pub fn set_raw_schedule(&mut self, schedule: [u32; 7]) {
+        self.schedule = schedule;
     }
 }
 
@@ -165,7 +182,7 @@ fn global_daytime(day: Day, time: u32, timezone: i32) -> (Day, u32) {
 }
 
 /// Converts the schedule (stored as UTC time) to match the specified timezone.
-fn local_schedule(schedule: [u32; 7], timezone: i32) -> [u32; 7] {
+fn shift_schedule(schedule: [u32; 7], timezone: i32) -> [u32; 7] {
     let mut res = schedule.clone();
 
     // Depending on if the timezone goes forward or backwards in time,
@@ -173,14 +190,47 @@ fn local_schedule(schedule: [u32; 7], timezone: i32) -> [u32; 7] {
     // Bit shifts are done to move the bits which are now in another day.
     if timezone > 0 {
         for day in 0..7 {
-            res[(day + 1) % 7] = ((schedule[(day + 1) % 7] << timezone) % 2u32.pow(24))
+            res[(day + 1) % 7] = ((schedule[(day + 1) % 7] << timezone) % (1 << 24))
                 | schedule[day] >> (24 - timezone) as u32;
         }
     } else if timezone < 0 {
         for day in 0..7 {
-            res[(day + 1) % 7] = (schedule[(day + 1) % 7] >> -timezone) % 2u32.pow(24)
-                | schedule[day] << (24 + timezone) as u32;
+            let shift = -timezone as u32;
+            res[(day + 6) % 7] = schedule[(day + 6) % 7] >> shift
+                | (schedule[day] << (24 - shift)) % (1 << 24);
         }
     }
     res
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_local_timezone() {
+        let ans = shift_schedule(
+            [(1 << 3) + (1 << 4), (1 << 3) + (1 << 4) + (1 << 5) + (1 << 6), 0, 0, 0, 0, (1 << 3) + (1 << 4)]
+            , -5
+        );
+        for day in ans.iter() {
+            println!("{:024b}", day);
+        }
+        assert_eq!(
+            [(1 << 22) + (1 << 23), 3, 0, 0, 0, (1 << 22) + (1 << 23), (1 << 22) + (1 << 23)], 
+            ans);
+    }
+
+    #[test]
+    fn test_set_timezone() {
+        let mut usr = User::new("bob".to_string());
+        usr.set_timezone(2);
+        usr.set_raw_schedule([1, 1 << 23, 0, 1, 0, 1 << 23, 1 << 5]);
+        println!("{}", usr.disp_schedule(true, 2));
+        usr.set_timezone(-1);
+        println!("{}", usr.disp_schedule(true, -1));
+        assert_eq!(usr.get_raw_schedule()[0], 8);
+        assert_eq!(usr.get_raw_schedule()[1], 0);
+        assert_eq!(usr.get_raw_schedule()[6], (1 << 8) + 4);
+    }
 }
