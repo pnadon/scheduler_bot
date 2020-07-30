@@ -1,3 +1,11 @@
+//===----------------------------------------------------------------------===//
+// parse.rs
+// 
+// This source file is part of the scheduler_bot project
+//
+// Copyright (c) 2020 Philippe Nadon
+// Licensed under Apache License v2.0
+//===----------------------------------------------------------------------===//
 use crate::day::Day;
 
 /// Tokens representing the type of query.
