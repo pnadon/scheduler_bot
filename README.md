@@ -22,4 +22,4 @@ The complete schedule is split into a per-user schedule, which consists of a sin
 5. `?timezone -7`: Sets your timezone to -7:00. -7 == -700.
 
 ## TODO
-1. split data by server members
+1. isolate data by server
