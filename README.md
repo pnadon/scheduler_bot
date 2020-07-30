@@ -22,6 +22,4 @@ The complete schedule is split into a per-user schedule, which consists of a sin
 5. `?timezone -7`: Sets your timezone to -7:00. -7 == -700.
 
 ## TODO
-1. Add help function which displays current commands
-2. Improve formatting of displayed schedule
-3. likely other things...
+1. split data by server members
