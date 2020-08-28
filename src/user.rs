@@ -1,13 +1,14 @@
 //===----------------------------------------------------------------------===//
 // user.rs
-// 
+//
 // This source file is part of the scheduler_bot project
 //
 // Copyright (c) 2020 Philippe Nadon
 // Licensed under Apache License v2.0
 //===----------------------------------------------------------------------===//
 use crate::day::*;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 
 /// Represents a single user's schedule.
 /// The schedule itself is stored in UTC time as an int (used as a bit vector).
@@ -22,7 +23,7 @@ pub struct User {
 impl User {
     pub fn new(name: String) -> User {
         Self {
-            name: name,
+            name,
             schedule: [0; 7],
             timezone: 0,
         }
@@ -69,31 +70,35 @@ impl User {
             true => (0..24)
                 .map(|bit| {
                     format!("{:0>2}", bit.to_string())
-                    + ": "
-                    + &(shift_schedule
-                        .iter()
-                        .map(move |times| match times & (1 << bit) {
-                            0 => "░ ",
-                            _ => "█ ",
-                        })
-                        .collect::<String>())
+                        + ": "
+                        + &(shift_schedule
+                            .iter()
+                            .map(move |times| match times & (1 << bit) {
+                                0 => "░ ",
+                                _ => "█ ",
+                            })
+                            .collect::<String>())
                         + "\n"
                 })
                 .collect::<String>(),
-            _ => "     012345678901234567890123\n".to_string() + &(shift_schedule
-                .iter().enumerate()
-                .map(|times| {
-                    num_to_day(times.0 as u32).unwrap().to_string()
-                    + ": "
-                    + &((0..24)
-                        .map(|bit| match times.1 & (1 << bit) {
-                            0 => '░',
-                            _ => '█',
+            _ => {
+                "     012345678901234567890123\n".to_string()
+                    + &(shift_schedule
+                        .iter()
+                        .enumerate()
+                        .map(|times| {
+                            num_to_day(times.0 as u32).unwrap().to_string()
+                                + ": "
+                                + &((0..24)
+                                    .map(|bit| match times.1 & (1 << bit) {
+                                        0 => '░',
+                                        _ => '█',
+                                    })
+                                    .collect::<String>())
+                                + "\n"
                         })
                         .collect::<String>())
-                        + "\n"
-                })
-                .collect::<String>()),
+            }
         }
     }
 
@@ -184,29 +189,34 @@ fn global_daytime(day: Day, time: u32, timezone: i32) -> (Day, u32) {
     } else {
         day_shift = 0;
     }
-    return (
+
+    (
         num_to_day(((day as u32) + day_shift) % 7).unwrap(),
         (new_time + 24) as u32 % 24,
-    );
+    )
 }
 
 /// Converts the schedule (stored as UTC time) to match the specified timezone.
 fn shift_schedule(schedule: [u32; 7], timezone: i32) -> [u32; 7] {
-    let mut res = schedule.clone();
+    let mut res = schedule;
 
     // Depending on if the timezone goes forward or backwards in time,
     // the operations may be reversed.
     // Bit shifts are done to move the bits which are now in another day.
-    if timezone > 0 {
-        for day in 0..7 {
-            res[(day + 1) % 7] = ((schedule[(day + 1) % 7] << timezone) % (1 << 24))
-                | schedule[day] >> (24 - timezone) as u32;
+    match timezone.cmp(&0) {
+        Ordering::Greater => {
+            for day in 0..7 {
+                res[(day + 1) % 7] = ((schedule[(day + 1) % 7] << timezone) % (1 << 24))
+                    | schedule[day] >> (24 - timezone) as u32;
+            }
         }
-    } else if timezone < 0 {
-        for day in 0..7 {
-            let shift = -timezone as u32;
-            res[(day + 6) % 7] = schedule[(day + 6) % 7] >> shift
-                | (schedule[day] << (24 - shift)) % (1 << 24);
+        Ordering::Equal => (),
+        Ordering::Less => {
+            for day in 0..7 {
+                let shift = -timezone as u32;
+                res[(day + 6) % 7] = schedule[(day + 6) % 7] >> shift
+                    | ((schedule[day] << (24 - shift)) % (1 << 24));
+            }
         }
     }
     res
@@ -219,15 +229,32 @@ mod tests {
     #[test]
     fn test_local_timezone() {
         let ans = shift_schedule(
-            [(1 << 3) + (1 << 4), (1 << 3) + (1 << 4) + (1 << 5) + (1 << 6), 0, 0, 0, 0, (1 << 3) + (1 << 4)]
-            , -5
+            [
+                (1 << 3) + (1 << 4),
+                (1 << 3) + (1 << 4) + (1 << 5) + (1 << 6),
+                0,
+                0,
+                0,
+                0,
+                (1 << 3) + (1 << 4),
+            ],
+            -5,
         );
         for day in ans.iter() {
             println!("{:024b}", day);
         }
         assert_eq!(
-            [(1 << 22) + (1 << 23), 3, 0, 0, 0, (1 << 22) + (1 << 23), (1 << 22) + (1 << 23)], 
-            ans);
+            [
+                (1 << 22) + (1 << 23),
+                3,
+                0,
+                0,
+                0,
+                (1 << 22) + (1 << 23),
+                (1 << 22) + (1 << 23)
+            ],
+            ans
+        );
     }
 
     #[test]

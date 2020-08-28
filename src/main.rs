@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 // main.rs
-// 
+//
 // This source file is part of the scheduler_bot project
 //
 // Copyright (c) 2020 Philippe Nadon
@@ -12,7 +12,6 @@ mod process;
 mod schedules;
 mod user;
 
-use serde_json;
 use std::fs;
 
 use parse::{filter_query, parse_query};
@@ -44,7 +43,7 @@ impl EventHandler for Handler {
     /// Reads incoming messages and parses them if they begin with "?".
     /// Messages are parsed into tokens, which are then processed accordingly.
     fn message(&self, ctx: Context, msg: Message) {
-        if msg.content.starts_with("?") {
+        if msg.content.starts_with('?') {
             let id = *msg.author.id.as_u64();
             let name = &msg.author.name;
 
@@ -81,7 +80,8 @@ impl EventHandler for Handler {
             } else if let Err(why) = msg.channel_id.say(&ctx.http, "Failed to parse message") {
                 println!("Error sending message: {:?}", why);
             }
-            fs::write(DATA_FNAME, serde_json::to_string(&schedule).unwrap()).expect("failed to write file");
+            fs::write(DATA_FNAME, serde_json::to_string(&schedule).unwrap())
+                .expect("failed to write file");
         }
     }
 

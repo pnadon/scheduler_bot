@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 // day.rs
-// 
+//
 // This source file is part of the scheduler_bot project
 //
 // Copyright (c) 2020 Philippe Nadon

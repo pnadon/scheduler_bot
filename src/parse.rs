@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 // parse.rs
-// 
+//
 // This source file is part of the scheduler_bot project
 //
 // Copyright (c) 2020 Philippe Nadon
@@ -43,7 +43,7 @@ pub fn filter_query(input: &str) -> Vec<String> {
                 .filter(|chr| chr.is_ascii_alphanumeric() || chr == &'-')
                 .collect::<String>()
         })
-        .filter(|word| word.len() > 0)
+        .filter(|word| !word.is_empty())
         .map(|word| word.to_lowercase())
         .collect::<Vec<String>>()
 }
@@ -52,7 +52,7 @@ pub fn filter_query(input: &str) -> Vec<String> {
 /// The function mostly serves as a router to sub-functions which handle
 /// each individual type of query.
 pub fn parse_query(params: Vec<String>) -> (Option<ParamType>, Option<Vec<ParamVals>>) {
-    if params.len() < 1 {
+    if params.is_empty() {
         return (None, None);
     }
     let param_type_str = params.first().unwrap().as_str();
@@ -91,7 +91,7 @@ pub fn parse_query(params: Vec<String>) -> (Option<ParamType>, Option<Vec<ParamV
 
 /// Parses the value of the inputted name.
 fn parse_name(params: Vec<&str>) -> Option<Vec<ParamVals>> {
-    if params.len() > 0 {
+    if !params.is_empty() {
         Some(vec![ParamVals::Name(params.concat())])
     } else {
         Some(vec![])
@@ -111,7 +111,7 @@ fn parse_schedule_id(params: Vec<&str>) -> Option<Vec<ParamVals>> {
 
 /// Parses the value of the inputted timezone.
 fn parse_timezone(params: Vec<&str>) -> Option<Vec<ParamVals>> {
-    if params.len() > 0 {
+    if !params.is_empty() {
         if let Ok(num) = params.first().unwrap().parse::<f64>() {
             let time_offset: i32 = get_largest_digit(num);
             if time_offset > -24 && time_offset < 24 {
@@ -136,9 +136,9 @@ fn parse_schedule(params: Vec<&str>) -> Option<Vec<ParamVals>> {
     let mut params_iter = params.iter().peekable();
     let mut res: Vec<ParamVals> = vec![];
     let mut param = params_iter.next();
-    if param.is_none() {
-        return None;
-    }
+
+    param?;
+
     if param.unwrap().starts_with("weekday") {
         res.push(ParamVals::DayRange(Day::Mon, Day::Fri));
         param = params_iter.next();

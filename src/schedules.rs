@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 // scheduler.rs
-// 
+//
 // This source file is part of the scheduler_bot project
 //
 // Copyright (c) 2020 Philippe Nadon
@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 use crate::day::*;
 use crate::user::User;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 
 /// Contains a collection of user's schedules,
 /// as well as a mapping from their current name to their unique id.
@@ -101,7 +101,7 @@ impl ScheduleCollection {
             Some(
                 self.users
                     .entry(*self.get_id(name).unwrap())
-                    .or_insert(User::new(" ".to_string())),
+                    .or_insert_with(|| User::new(" ".to_string())),
             )
         } else {
             None
